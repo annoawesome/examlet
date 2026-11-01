@@ -13,6 +13,7 @@ Examlet is a flashcard app that runs entirely in the browser. It has no backend:
 │    └──uses──▶  lib/   (pure logic, no React)             │
 │                  ├─ session.ts        study state machine│
 │                  ├─ latex.ts          math tokenizer     │
+│                  ├─ mathSymbols.ts    symbol palette     │
 │                  ├─ studysheetFile.ts import / export    │
 │                  ├─ editor.ts         editor draft logic │
 │                  ├─ routes.ts         hash routing       │
@@ -81,9 +82,18 @@ selectors: currentCard, isComplete, scoreSession, missedCards
 ## LaTeX (`src/lib/latex.ts`, `src/components/MathText.tsx`)
 
 - `parseMath` splits text into text and math segments. It supports `$…$` and `\(…\)` for inline math, `$$…$$` and `\[…\]` for display math, and `\$` for a literal dollar sign. An inline `$` must hug its content, so prose like "$5 and $10" stays plain text.
+- `mathRanges` reports where each math body sits in the source, so the editor can tell whether the caret is inside math.
 - `MathText` renders text segments as React text nodes, which are always escaped. Math segments go through `katex.renderToString` with `trust: false`, which disables `\href`, `\includegraphics`, and similar commands, and `throwOnError: false`, which shows bad LaTeX in red instead of crashing. KaTeX output is the only HTML the app injects.
 
-## Import and export (`src/lib/studysheetFile.ts`)
+### Math input (`src/lib/mathSymbols.ts`, `src/components/MathPalette.tsx`)
+
+Cards stay plain text. The editor makes math easier to write without hiding the LaTeX:
+
+- **Live preview**: any field that contains math shows a rendered preview under it. Fields without math show nothing extra.
+- **Symbol palette**: a **Σ** button next to each field label appears when the card has focus or the pointer is over it. It opens a palette with categories and search. Each tile is rendered with KaTeX, and the status line shows the tile's LaTeX, so authors learn the code as they go.
+- **Insertion** (`planInsertion`): outside math the LaTeX is wrapped in `$…$`. Right after a closing `$` it joins that math. `□` in a template marks a blank: the caret lands on the first one, and any selected text fills it. The editor applies the edit with `execCommand('insertText')`, which keeps the browser's undo history, and falls back to a controlled update where that command is unavailable (for example in jsdom).
+
+ (`src/lib/studysheetFile.ts`)
 
 Files use the `.studysheet.json` extension:
 

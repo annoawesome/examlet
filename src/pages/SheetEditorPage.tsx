@@ -126,9 +126,14 @@ export function SheetEditorPage({ sheetId }: { sheetId: string }) {
           />
         </label>
 
-        <p className="hint">
-          Write math with LaTeX: <code>$x^2$</code> inline, <code>$$\int_0^1 f(x)\,dx$$</code> for display. Use <code>\$</code> for a literal dollar sign.
-        </p>
+        <details className="math-help hint">
+          <summary>Writing math</summary>
+          <p>
+            Press <strong>Σ</strong> beside a field to pick symbols, or type LaTeX yourself: <code>$x^2$</code> inline,{' '}
+            <code>$$\int_0^1 f(x)\,dx$$</code> on its own line. A preview appears under any field with math. Use <code>\$</code> for a literal
+            dollar sign; prices like $5 are left alone.
+          </p>
+        </details>
       </section>
 
       <h2 className="section-title">

@@ -24,8 +24,27 @@ const DELIMITERS: readonly Delimiter[] = [
   { open: '$', close: '$', display: false },
 ];
 
+export interface MathRange {
+  start: number;
+  end: number;
+  outerEnd: number;
+}
+
 export function parseMath(source: string): Segment[] {
+  return scan(source).segments;
+}
+
+/**
+ * Where each math segment sits in the source. `[start, end)` is the body;
+ * `outerEnd` is just past the closing delimiter.
+ */
+export function mathRanges(source: string): MathRange[] {
+  return scan(source).ranges;
+}
+
+function scan(source: string) {
   const segments: Segment[] = [];
+  const ranges: MathRange[] = [];
   let text = '';
   let i = 0;
 
@@ -45,6 +64,7 @@ export function parseMath(source: string): Segment[] {
     if (match) {
       flushText();
       segments.push({ kind: 'math', value: match.body, display: match.display });
+      ranges.push({ start: match.bodyStart, end: match.bodyStart + match.body.length, outerEnd: match.end });
       i = match.end;
       continue;
     }
@@ -54,7 +74,7 @@ export function parseMath(source: string): Segment[] {
   }
 
   flushText();
-  return segments;
+  return { segments, ranges };
 }
 
 /** True when the text contains at least one math segment. */
@@ -65,7 +85,7 @@ export function containsMath(source: string): boolean {
 function matchDelimiter(
   source: string,
   start: number,
-): { body: string; display: boolean; end: number } | undefined {
+): { body: string; bodyStart: number; display: boolean; end: number } | undefined {
   for (const delimiter of DELIMITERS) {
     if (!source.startsWith(delimiter.open, start)) continue;
 
@@ -79,7 +99,7 @@ function matchDelimiter(
     // "$5 and $10" is prose, not math: inline `$` must hug its content.
     if (delimiter.open === '$' && (/^\s/.test(body) || /\s$/.test(body))) continue;
 
-    return { body, display: delimiter.display, end: close + delimiter.close.length };
+    return { body, bodyStart, display: delimiter.display, end: close + delimiter.close.length };
   }
 
   return undefined;

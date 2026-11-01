@@ -43,6 +43,26 @@ describe('SheetEditorPage', () => {
     expect((await repository.get('s1'))?.sheet.title).toBe('New title');
   });
 
+  it('inserts symbols from the math palette and previews them', async () => {
+    const user = userEvent.setup();
+    renderWithRepository(<SheetEditorPage sheetId={NEW_SHEET_ID} />);
+
+    const [definition] = screen.getAllByLabelText('Definition');
+    await user.type(definition!, 'Let ');
+    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
+
+    const [toggle] = screen.getAllByRole('button', { name: 'Math symbols for definition' });
+    await user.click(toggle!);
+    await user.click(screen.getByRole('button', { name: 'Greek' }));
+    await user.click(screen.getByRole('button', { name: 'alpha' }));
+
+    expect(definition).toHaveValue('Let $\\alpha$');
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search symbols' }), 'choose{Enter}');
+    expect(definition).toHaveValue('Let $\\alpha\\binom{}{}$');
+  });
+
   it('shows a not-found state for unknown sheets', async () => {
     renderWithRepository(<SheetEditorPage sheetId="missing" />);
 

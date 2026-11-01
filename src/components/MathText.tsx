@@ -32,7 +32,7 @@ export const MathText = memo(function MathText({ text, className }: MathTextProp
   );
 });
 
-function renderLatex(source: string, displayMode: boolean): string {
+export function renderLatex(source: string, displayMode: boolean): string {
   return katex.renderToString(source, {
     displayMode,
     // Show the bad LaTeX in red instead of crashing the card.

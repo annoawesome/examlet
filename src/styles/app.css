@@ -432,24 +432,178 @@ textarea:focus {
   gap: 2px;
 }
 
-.card-row-actions .has-math {
-  color: var(--primary);
-}
-
 .card-row-fields {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: 16px;
 }
 
-.card-row-preview {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  gap: 16px;
-  margin-top: 12px;
-  padding: 12px;
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+
+/* The Σ button only shows on the card being worked on, so sheets without math stay plain. */
+.math-toggle {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.card-row:hover .math-toggle,
+.card-row:focus-within .math-toggle,
+.math-toggle:focus-visible {
+  opacity: 1;
+}
+
+.math-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.math-toggle[aria-expanded='true'] {
+  opacity: 1;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+@media (hover: none) {
+  /* No hover on touch screens: keep it faintly visible so it can be found. */
+  .math-toggle {
+    opacity: 0.6;
+  }
+}
+
+.field-preview {
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
+}
+
+.field-preview-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.math-help summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.math-help p {
+  margin: 8px 0 0;
+}
+
+/* ---------- Math palette ---------- */
+
+.math-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.math-palette-top {
+  display: flex;
+  gap: 8px;
+}
+
+.math-palette-search {
+  flex: 1;
+  padding: 6px 10px;
+}
+
+.math-palette-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.math-palette-tab {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.math-palette-tab:hover {
+  color: var(--text);
+}
+
+.math-palette-tab[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.math-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.math-tile {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.math-tile:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.math-palette-empty {
+  grid-column: 1 / -1;
+  margin: 8px 0;
+}
+
+.math-palette-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 1.5em;
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .btn-add-card {
@@ -468,8 +622,7 @@ textarea:focus {
 }
 
 @media (max-width: 680px) {
-  .card-row-fields,
-  .card-row-preview {
+  .card-row-fields {
     grid-template-columns: 1fr;
   }
 }
