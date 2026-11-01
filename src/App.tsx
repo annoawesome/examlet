@@ -1,4 +1,6 @@
+import { UpdateBanner } from './components/UpdateBanner';
 import { useRoute } from './hooks/useRoute';
+import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate';
 import { hrefFor, type Route } from './lib/routes';
 import { HomePage } from './pages/HomePage';
 import { SheetEditorPage } from './pages/SheetEditorPage';
@@ -6,6 +8,7 @@ import { StudyPage } from './pages/StudyPage';
 
 export function App() {
   const route = useRoute();
+  const { applyUpdate, dismiss } = useServiceWorkerUpdate();
 
   return (
     <div className="app">
@@ -17,6 +20,8 @@ export function App() {
       </header>
 
       <main className="main">{renderRoute(route)}</main>
+
+      {applyUpdate && <UpdateBanner onReload={applyUpdate} onDismiss={dismiss} />}
     </div>
   );
 }

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    // vite.config.ts imports pwa/*.ts with its extension, as Vite's native
+    // config loader requires.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["pwa", "vite.config.ts"]
+}

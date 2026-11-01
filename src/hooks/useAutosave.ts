@@ -4,8 +4,9 @@ export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 /**
  * Debounced autosave. Call `schedule(value)` on every edit; `save(value)` runs
- * once edits pause for `delayMs`. Pending work is flushed on unmount and the
- * browser warns before closing the tab while a save is outstanding.
+ * once edits pause for `delayMs`. Pending work is flushed on unmount and when
+ * the page is hidden, and the browser warns before closing the tab while a
+ * save is outstanding.
  */
 export function useAutosave<T>(save: (value: T) => Promise<void>, delayMs = 500) {
   const [status, setStatus] = useState<SaveStatus>('idle');
@@ -45,9 +46,20 @@ export function useAutosave<T>(save: (value: T) => Promise<void>, delayMs = 500)
       if (pending.current) event.preventDefault();
     };
 
+    // Mobile systems often kill a backgrounded app without `beforeunload`,
+    // so save as soon as the page is hidden.
+    const flushIfHidden = () => {
+      if (document.visibilityState === 'hidden') void flush();
+    };
+    const flushNow = () => void flush();
+
     window.addEventListener('beforeunload', warn);
+    window.addEventListener('pagehide', flushNow);
+    document.addEventListener('visibilitychange', flushIfHidden);
     return () => {
       window.removeEventListener('beforeunload', warn);
+      window.removeEventListener('pagehide', flushNow);
+      document.removeEventListener('visibilitychange', flushIfHidden);
       void flush();
     };
   }, [flush]);

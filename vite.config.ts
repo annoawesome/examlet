@@ -2,6 +2,8 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
+import { serviceWorker } from './pwa/serviceWorkerPlugin.ts';
+
 /**
  * Production-only Content Security Policy. The app has no backend, so it
  * never needs to talk to another origin. Dev mode is excluded because the
@@ -35,7 +37,7 @@ function contentSecurityPolicy(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), contentSecurityPolicy()],
+  plugins: [react(), contentSecurityPolicy(), serviceWorker()],
   base: './',
 
   // KaTeX is ~270 kB and needed on every card view, so splitting it out

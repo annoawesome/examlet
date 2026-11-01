@@ -11,14 +11,31 @@ export const SHEETS_STORE = 'studysheets';
 export const CARDS_STORE = 'cards';
 export const CARDS_BY_SHEET_INDEX = 'bySheetId';
 
-export function openDatabase(name: string = DEFAULT_DB_NAME): Promise<IDBDatabase> {
+/**
+ * Opens the database. When a newer version of the app (in another tab or
+ * window) needs to upgrade the schema, this connection closes so the upgrade
+ * can proceed, then `onVersionChange` runs (by default, a reload into the new
+ * version).
+ */
+export function openDatabase(
+  name: string = DEFAULT_DB_NAME,
+  onVersionChange: () => void = () => window.location.reload(),
+): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, DB_VERSION);
 
     request.onupgradeneeded = () => upgrade(request.result);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+        onVersionChange();
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Database upgrade blocked by another open tab.'));
+    // `blocked` is not fatal: the open finishes once older connections close,
+    // which they do through `onversionchange` above.
   });
 }
 

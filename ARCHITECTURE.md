@@ -48,6 +48,7 @@ Dependencies flow downward only: pages → components/hooks → lib. Nothing in 
 - `repository.ts` exposes a small `StudysheetRepository` interface: `listSummaries`, `get`, `save`, `delete`. `save` writes the sheet and replaces its cards in a single readwrite transaction, so a sheet is never stored half-updated.
 - The repository reaches React through `RepositoryProvider` (`hooks/RepositoryContext.tsx`). Tests inject a repository backed by a uniquely named database through `fake-indexeddb`.
 - On startup, `requestPersistentStorage()` asks the browser not to evict the data under storage pressure. The browser may decline.
+- When another tab or window opens the database at a newer schema version (after an app update), this connection gets `versionchange`. It closes so the upgrade can go ahead, then reloads the page into the new version. A `blocked` open is not treated as an error, because it finishes once the older connections close.
 
 ## Editing and autosave
 
@@ -55,7 +56,7 @@ Dependencies flow downward only: pages → components/hooks → lib. Nothing in 
 
 - `toStored` (in `lib/editor.ts`) skips blank rows, renumbers `position`, and gives empty titles a default name. Blank rows stay visible in the editor but are never stored or studied.
 - A new sheet starts at `#/sheets/new/edit`. On its first save the URL is replaced with the real id. The page tracks the loaded id, so this URL swap doesn't reload the page.
-- Pending saves are flushed when the page unmounts, and `beforeunload` warns before closing a tab with unsaved edits.
+- Pending saves are flushed when the page unmounts, on `pagehide`, and as soon as the page is hidden (`visibilitychange`). Mobile systems often kill a backgrounded app without firing `beforeunload`. `beforeunload` still warns before closing a tab with unsaved edits.
 
 ## Study sessions (`src/lib/session.ts`)
 
@@ -128,6 +129,33 @@ Routing is hash-based, so the build is a pure static bundle that works on any st
 
 `useRoute` subscribes to `hashchange` through `useSyncExternalStore`.
 
+## Offline and installation (`pwa/`, `src/lib/serviceWorker.ts`)
+
+Examlet is a Progressive Web App. It installs on Windows, macOS, Linux, Android, and iOS, and after the first visit it runs with no network.
+
+- **Manifest**: `public/manifest.webmanifest`. All paths are relative (`start_url` and `scope` are `./`), so it works on any sub-path like the rest of the build.
+- **Icons**: `public/icons/` holds PNGs rendered from `public/favicon.svg`, the same mark the header shows. There is an `any` set (192 and 512 px, transparent background), a maskable icon (the mark inside the 80% safe zone on `--bg`), and an opaque 180 px `apple-touch-icon` for iOS, which ignores manifest icons and SVG. After changing the favicon, run `sh scripts/generate-icons.sh` (macOS, uses `sips`).
+- **Service worker**: `pwa/sw.js` is a template. The `examlet:service-worker` Vite plugin (`pwa/serviceWorkerPlugin.ts`) runs at build time and fills it with:
+  - the list of build and `public/` files to precache. WOFF and TTF fonts are left out because every browser with service workers uses KaTeX's WOFF2 copies.
+  - a version, which is a hash of those files' contents and the worker code.
+
+  The result is emitted as `dist/sw.js`.
+- **Caching**: the worker precaches everything on install and serves it cache-first. Every navigation in scope gets the cached app shell, which is safe because routing is hash-based.
+  - The shell is precached under the scope root (`./`), not `index.html`. Many hosts redirect `/index.html` to `/` (Cloudflare Pages, Netlify pretty URLs, Vercel `cleanUrls`). A cached response that went through a redirect keeps a `redirected` flag, and browsers refuse it for a navigation. Safari shows "Response served by service worker has redirections". As a backstop, any precached response that was still redirected is stored as a fresh copy without the flag.
+  - Lookups use `ignoreVary`, since hosts may send `Vary: Origin` and `crossorigin` script and style requests carry an Origin header that the precache requests lacked.
+  - Caches are named `examlet:<scope>:<version>`, and old versions are deleted when a new worker activates.
+- **Updates**: a new worker installs in the background and waits whenever an app window is open. `watchForUpdates` notices it, and `UpdateBanner` offers **Reload**. Accepting sends `SKIP_WAITING`, and the page reloads once the new worker takes control. A new version never replaces the running one mid-session. If no window is open when it finishes installing, there is nothing to disrupt, so it activates right away. Installed apps can stay open for days, so the app also checks for updates whenever it becomes visible again.
+- **Dev mode**: the service worker is only registered in production builds (`useServiceWorkerUpdate`), so it never caches Vite's dev server. Use `npm run build && npm run preview` to test offline behavior.
+- **CSP**: the worker and manifest are same-origin, so `default-src 'self'` and `script-src 'self'` already cover them.
+
+### Platform notes
+
+| Platform | Install | Notes |
+| --- | --- | --- |
+| Android | Chrome, Edge, and Samsung Internet show an install prompt | |
+| Windows, macOS, Linux | Chrome and Edge install it as an app; Safari on macOS uses *File → Add to Dock* | Firefox desktop has limited install support, but offline still works in a tab |
+| iOS, iPadOS | *Share → Add to Home Screen* (no automatic prompt) | The installed app's storage is separate from Safari's. Safari can clear data for sites that haven't been visited in a while; installed apps are exempt |
+
 ## Theming
 
 Colors, radii, and motion are CSS custom properties in `src/styles/theme.css`: an orange primary (`--primary: #f2711c`) on warm dark neutrals. Components only reference tokens, so restyling the app only requires editing that file. Animations respect `prefers-reduced-motion`.
@@ -141,11 +169,11 @@ Colors, radii, and motion are CSS custom properties in `src/styles/theme.css`: a
 
 ### Supply chain
 
-The dependency set is deliberately small. Routing, IndexedDB access, and math tokenizing are written in-house instead of being pulled in as packages.
+The dependency set is deliberately small. Routing, IndexedDB access, math tokenizing, and the service worker are written in-house instead of being pulled in as packages.
 
 | Runtime | Dev only |
 | --- | --- |
-| `react`, `react-dom`, `katex` | `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `jsdom`, `@testing-library/*`, `fake-indexeddb`, `@types/react*` |
+| `react`, `react-dom`, `katex` | `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `jsdom`, `@testing-library/*`, `fake-indexeddb`, `@types/react*`, `@types/node` |
 
 Mitigations:
 
@@ -174,8 +202,11 @@ Use `npm ci` (not `npm install`) in CI and fresh clones so the lockfile is follo
 
 Tests run on Vitest with jsdom. `src/test/setup.ts` loads `@testing-library/jest-dom` matchers and `fake-indexeddb/auto`.
 
-- **Unit tests** (`src/lib/*.test.ts`) cover shuffle, the session reducer, the LaTeX tokenizer, file import/export, editor draft logic, routes, and the IndexedDB repository.
-- **Component tests** (`src/components`, `src/pages`) cover KaTeX rendering and HTML escaping, the full study flow including keyboard use, scoring, and retrying missed cards, autosave in the editor, and file import on the home page.
+- **Unit tests** (`src/lib/*.test.ts`) cover shuffle, the session reducer, the LaTeX tokenizer, file import/export, editor draft logic, routes, the IndexedDB repository and schema-upgrade handoff, and service worker update detection. `src/hooks/useAutosave.test.ts` covers saving when the page is hidden.
+- **Build tests** (`pwa/*.test.ts`, which run in the Node environment) cover the precache list and service worker template rendering.
+- **Component tests** (`src/components`, `src/pages`) cover KaTeX rendering and HTML escaping, the full study flow including keyboard use, scoring, and retrying missed cards, autosave in the editor, file import on the home page, and the update banner.
+
+`npm run typecheck` runs two configs: `tsconfig.json` for the browser code in `src/`, and `tsconfig.node.json` for the build-time code in `pwa/` and `vite.config.ts`, which gets Node types. Node globals never leak into app code.
 
 ```bash
 npm test           # run once
