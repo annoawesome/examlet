@@ -1,0 +1,39 @@
+/* Design tokens: orange primary on warm, dark neutrals. */
+:root {
+  color-scheme: dark;
+
+  /* Warm neutral surfaces, darkest to lightest */
+  --bg: #1a1612;
+  --surface: #241f1a;
+  --surface-2: #2e2822;
+  --surface-3: #3a332b;
+  --border: #463d34;
+  --border-strong: #5a4f44;
+
+  /* Text */
+  --text: #f4ede5;
+  --text-muted: #b3a597;
+  --text-faint: #85786b;
+
+  /* Brand */
+  --primary: #f2711c;
+  --primary-hover: #ff8838;
+  --primary-soft: rgb(242 113 28 / 0.14);
+  --primary-text: #1a1612;
+
+  /* Grading */
+  --right: #7bc47f;
+  --right-soft: rgb(123 196 127 / 0.14);
+  --wrong: #ef6a5a;
+  --wrong-soft: rgb(239 106 90 / 0.14);
+
+  /* Shape and motion */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
